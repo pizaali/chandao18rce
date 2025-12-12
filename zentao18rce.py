@@ -1,4 +1,3 @@
-import gnureadline
 import requests
 import re
 import sys
@@ -150,4 +149,5 @@ def run():
 
 
 if __name__ == "__main__":
+
     run()
